@@ -379,3 +379,73 @@ kbd { background: var(--surface2); border: 1px solid var(--border2); border-radi
   display: flex; align-items: center; justify-content: center;
 }
 .draw-action:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ═══════════════════════════════════════════════
+   LIGHTBOX WITH DRAWING
+   ═══════════════════════════════════════════════ */
+
+.lightbox-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.lb-hint {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+}
+
+.lb-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-btn-export {
+  background: rgba(0,230,118,0.12);
+  color: var(--green);
+  border: 1px solid rgba(0,230,118,0.25);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-family: var(--ff-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.lb-btn-export:hover { background: rgba(0,230,118,0.22); }
+
+/* Video wrapper — position: relative so canvas sits on top */
+.lb-video-wrap {
+  position: relative;
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0; /* removes gap under video */
+}
+
+.lb-video-wrap video {
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  display: block;
+  border-radius: 10px;
+}
+
+/* Canvas inside lightbox */
+.lb-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  cursor: crosshair;
+  z-index: 10;
+  touch-action: none;
+  border-radius: 10px;
+}
+.lb-canvas.hidden { display: none; }
+
+/* Lightbox toolbar — sits at bottom of video wrap */
+.lb-draw-toolbar {
+  bottom: 14px;
+}
