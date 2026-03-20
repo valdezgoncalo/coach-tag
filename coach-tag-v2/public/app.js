@@ -1130,3 +1130,276 @@ function onPointerUp(e) {
   }
   ctx.beginPath(); // reset path for freehand
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  PDF EXPORT
+// ═══════════════════════════════════════════════════════════════════
+
+// Export PDF for the current game (called from Tagger tab)
+async function exportPDFCurrentGame() {
+  if (!currentGameId) { showToast('Selecciona um jogo primeiro', 'error'); return; }
+  const gameFilter = document.getElementById('statsGameFilter');
+  const prevVal    = gameFilter.value;
+  gameFilter.value = currentGameId;
+  await exportPDF();
+  gameFilter.value = prevVal;
+}
+
+// Main PDF export — uses whatever game is selected in statsGameFilter
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { showToast('Erro: jsPDF não carregou', 'error'); return; }
+
+  showToast('A gerar PDF...');
+
+  const gameId  = document.getElementById('statsGameFilter').value;
+  const games   = await fetch('/games').then(r => r.json());
+  const game    = games.find(g => g.id === gameId) || null;
+  const url     = '/stats' + (gameId ? `?gameId=${gameId}` : '');
+  const stats   = await fetch(url).then(r => r.json());
+
+  const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W      = 210, H = 297;
+  const margin = 16;
+  const colW   = W - margin * 2;
+  let   y      = 0;
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return [r, g, b];
+  }
+
+  function checkPage(needed = 10) {
+    if (y + needed > H - 16) { doc.addPage(); y = margin; }
+  }
+
+  function sectionTitle(text) {
+    checkPage(14);
+    doc.setFillColor(26, 32, 48);
+    doc.roundedRect(margin, y, colW, 9, 2, 2, 'F');
+    doc.setTextColor(0, 230, 118);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(text.toUpperCase(), margin + 4, y + 6);
+    doc.setTextColor(40, 40, 40);
+    y += 13;
+  }
+
+  // ── Cover ──────────────────────────────────────────────────────
+  // Dark header band
+  doc.setFillColor(11, 14, 19);
+  doc.rect(0, 0, W, 58, 'F');
+
+  // Green accent line
+  doc.setFillColor(0, 230, 118);
+  doc.rect(0, 58, W, 2, 'F');
+
+  // Logo text
+  doc.setTextColor(0, 230, 118);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(28);
+  doc.text('⚽ CoachTag', margin, 24);
+
+  // Game name
+  const title = game ? game.name : 'Todos os Jogos';
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(title, margin, 38);
+
+  // Date + event count
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(160, 170, 190);
+  const dateStr = game ? fmtDate(game.date) : 'Todos os jogos';
+  doc.text(`${dateStr}  ·  ${stats.total} eventos`, margin, 50);
+
+  // Generated date
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-PT')}`, W - margin, 50, { align: 'right' });
+
+  y = 72;
+
+  // ── Summary cards ──────────────────────────────────────────────
+  const cards = [
+    { label: 'Total Eventos', value: stats.total },
+    { label: 'Jogadores', value: Object.keys(stats.byPlayer).length },
+    { label: 'Tipos de Acção', value: Object.keys(stats.byType).length },
+    { label: 'Jogos', value: Object.keys(stats.byGame).length },
+  ];
+  const cardW = (colW - 9) / 4;
+  cards.forEach((c, i) => {
+    const x = margin + i * (cardW + 3);
+    doc.setFillColor(240, 244, 250);
+    doc.roundedRect(x, y, cardW, 18, 2, 2, 'F');
+    doc.setTextColor(0, 230, 118);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(String(c.value), x + cardW/2, y + 11, { align: 'center' });
+    doc.setTextColor(100, 110, 130);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text(c.label.toUpperCase(), x + cardW/2, y + 16, { align: 'center' });
+  });
+  y += 26;
+
+  // ── By Player ──────────────────────────────────────────────────
+  sectionTitle('Estatísticas por Jogador');
+  const players = Object.entries(stats.byPlayer).sort((a,b) => b[1].total - a[1].total);
+  const maxP    = players[0]?.[1].total || 1;
+
+  players.forEach(([name, data]) => {
+    checkPage(20);
+    // Player name + total
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 30);
+    doc.text(name, margin, y + 4);
+    doc.setTextColor(0, 150, 80);
+    doc.text(String(data.total), W - margin, y + 4, { align: 'right' });
+
+    // Bar track
+    const barY   = y + 6;
+    const barH   = 5;
+    const barMax = colW * 0.7;
+    const barW   = Math.max(4, (data.total / maxP) * barMax);
+    doc.setFillColor(230, 235, 245);
+    doc.roundedRect(margin, barY, barMax, barH, 1, 1, 'F');
+    doc.setFillColor(0, 200, 100);
+    doc.roundedRect(margin, barY, barW, barH, 1, 1, 'F');
+
+    // Type breakdown tags
+    let tagX = margin;
+    const tagY = barY + barH + 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    Object.entries(data.byType).sort((a,b)=>b[1]-a[1]).slice(0,6).forEach(([type, n]) => {
+      const ac  = actionsCache.find(a => a.label === type);
+      const col = ac ? hexToRgb(ac.color) : [100,100,100];
+      const tag = `${type}: ${n}`;
+      const tw  = doc.getTextWidth(tag) + 5;
+      if (tagX + tw > W - margin) return;
+      doc.setDrawColor(...col); doc.setTextColor(...col);
+      doc.roundedRect(tagX, tagY - 3.5, tw, 5, 1, 1, 'S');
+      doc.text(tag, tagX + 2.5, tagY);
+      tagX += tw + 3;
+    });
+
+    y += 22;
+  });
+
+  y += 4;
+
+  // ── By Type ────────────────────────────────────────────────────
+  sectionTitle('Eventos por Tipo de Acção');
+  const types  = Object.entries(stats.byType).sort((a,b) => b[1]-a[1]);
+  const maxT   = types[0]?.[1] || 1;
+  const barMax = colW * 0.65;
+
+  types.forEach(([type, n]) => {
+    checkPage(10);
+    const ac  = actionsCache.find(a => a.label === type);
+    const col = ac ? hexToRgb(ac.color) : [100,100,100];
+    const barW = Math.max(4, (n / maxT) * barMax);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(40, 40, 40);
+    doc.text(`${ac?.emoji || ''} ${type}`, margin, y + 4);
+
+    const bx = margin + 52;
+    doc.setFillColor(230, 235, 245);
+    doc.roundedRect(bx, y, barMax, 6, 1, 1, 'F');
+    doc.setFillColor(...col);
+    doc.roundedRect(bx, y, barW, 6, 1, 1, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...col);
+    doc.text(String(n), W - margin, y + 5, { align: 'right' });
+
+    y += 10;
+  });
+
+  y += 6;
+
+  // ── Events list ────────────────────────────────────────────────
+  sectionTitle('Lista Completa de Eventos');
+
+  // Table header
+  doc.setFillColor(220, 228, 240);
+  doc.rect(margin, y, colW, 7, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(60, 70, 90);
+  doc.text('TEMPO',   margin + 2,      y + 5);
+  doc.text('JOGADOR', margin + 22,     y + 5);
+  doc.text('ACÇÃO',   margin + 72,     y + 5);
+  y += 9;
+
+  // Get events for selected game(s)
+  let allEvents = [];
+  if (gameId) {
+    allEvents = await fetch(`/games/${gameId}/events`).then(r => r.json());
+    allEvents.sort((a,b) => a.time - b.time);
+  } else {
+    for (const g of games) {
+      const evs = await fetch(`/games/${g.id}/events`).then(r => r.json());
+      evs.forEach(e => allEvents.push({ ...e, gameName: g.name }));
+    }
+    allEvents.sort((a,b) => a.time - b.time);
+  }
+
+  allEvents.forEach((e, i) => {
+    checkPage(7);
+    const bg = i % 2 === 0 ? [250,252,255] : [240,244,252];
+    doc.setFillColor(...bg);
+    doc.rect(margin, y, colW, 6, 'F');
+
+    const ac  = actionsCache.find(a => a.label === e.type);
+    const col = ac ? hexToRgb(ac.color) : [80,80,80];
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 180, 90);
+    doc.text(fmt(e.time), margin + 2, y + 4.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 30, 30);
+    doc.text(e.player, margin + 22, y + 4.2);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...col);
+    doc.text(e.type, margin + 72, y + 4.2);
+
+    if (!gameId && e.gameName) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(140, 150, 170);
+      doc.text(e.gameName, margin + 120, y + 4.2);
+    }
+
+    y += 6.5;
+  });
+
+  // ── Footer on each page ────────────────────────────────────────
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFillColor(240, 244, 250);
+    doc.rect(0, H - 10, W, 10, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(140, 150, 170);
+    doc.text('CoachTag — Análise de Desempenho', margin, H - 4);
+    doc.text(`Página ${p} / ${pageCount}`, W - margin, H - 4, { align: 'right' });
+  }
+
+  // ── Save ───────────────────────────────────────────────────────
+  const filename = game
+    ? `CoachTag_${game.name.replace(/\s+/g,'_')}_${game.date}.pdf`
+    : `CoachTag_Relatorio_${new Date().toISOString().split('T')[0]}.pdf`;
+
+  doc.save(filename);
+  showToast('PDF exportado ✓');
+}
