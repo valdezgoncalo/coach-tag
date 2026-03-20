@@ -319,14 +319,24 @@ function ffmpegSafe(input, start, duration, outPath) {
 
 app.post('/games/:gameId/clips/export', async (req, res) => {
     const { gameId } = req.params;
-    const ev  = readJSON(gameEventsFile(gameId)).find(e => e.id === req.body.eventId);
+    const { eventId, startTime, endTime } = req.body;
+    const ev = readJSON(gameEventsFile(gameId)).find(e => e.id === eventId);
     if (!ev) return res.status(404).json({ error: 'Evento não encontrado.' });
-    const vp  = getVideoPath(gameId);
-    if (!vp)  return res.status(400).json({ error: 'Vídeo não encontrado.' });
+    const vp = getVideoPath(gameId);
+    if (!vp) return res.status(400).json({ error: 'Vídeo não encontrado.' });
+
+    // Use custom interval if provided, otherwise fall back to defaults
+    const start    = (typeof startTime === 'number') ? Math.max(0, startTime) : Math.max(0, ev.time - CLIP_BEFORE);
+    const duration = (typeof startTime === 'number' && typeof endTime === 'number')
+        ? Math.max(0.5, endTime - startTime)
+        : CLIP_BEFORE + CLIP_AFTER;
+
     const name = `clip_${gameId}_${ev.player.replace(/\s+/g,'_')}_${ev.type.replace(/\s+/g,'_')}_${Math.floor(ev.time)}s_${Date.now()}.mp4`;
     const out  = path.join(CLIPS_DIR, name);
-    try { await ffmpegSafe(vp, Math.max(0, ev.time - CLIP_BEFORE), CLIP_BEFORE + CLIP_AFTER, out); res.json({ url: `/clips/${name}`, filename: name }); }
-    catch { res.status(500).json({ error: 'Erro FFmpeg.' }); }
+    try {
+        await ffmpegSafe(vp, start, duration, out);
+        res.json({ url: `/clips/${name}`, filename: name });
+    } catch { res.status(500).json({ error: 'Erro FFmpeg. Verifica se o FFmpeg está instalado no servidor.' }); }
 });
 
 app.post('/games/:gameId/clips/export-all', async (req, res) => {
