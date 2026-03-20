@@ -179,6 +179,17 @@ app.get('/games/:gameId/video/meta', (req, res) => {
     res.json(meta || null);
 });
 
+// Save external video link (no upload needed)
+app.post('/games/:gameId/video/link', (req, res) => {
+    const { gameId } = req.params;
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL obrigatório.' });
+    ensureGameDir(gameId);
+    const meta = { type: 'link', url, uploadedAt: new Date().toISOString(), filename: null };
+    writeJSON(gameVideoMetaFile(gameId), meta);
+    res.json(meta);
+});
+
 // ═══════════════════════════════════════════════════════════════════
 //  EVENTS
 // ═══════════════════════════════════════════════════════════════════
