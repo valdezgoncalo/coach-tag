@@ -449,3 +449,50 @@ kbd { background: var(--surface2); border: 1px solid var(--border2); border-radi
 .lb-draw-toolbar {
   bottom: 14px;
 }
+
+/* ═══════════════════════════════════════════════
+   CLIP INTERVAL MODAL
+   ═══════════════════════════════════════════════ */
+
+.clip-modal-box {
+  width: 380px;
+}
+
+.clip-modal-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: -6px;
+}
+
+.clip-interval-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.clip-interval-row .modal-field {
+  flex: 1;
+}
+
+.clip-interval-arrow {
+  font-size: 1.2rem;
+  color: var(--muted);
+  padding-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.clip-duration-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  min-height: 18px;
+}
+
+/* Fix clip card video thumbnail not showing */
+.clip-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  background: #000;
+}
