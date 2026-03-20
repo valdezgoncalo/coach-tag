@@ -496,3 +496,25 @@ kbd { background: var(--surface2); border: 1px solid var(--border2); border-radi
   pointer-events: none;
   background: #000;
 }
+
+/* ─── PDF BUTTON & STATS HEADER ──────────────── */
+.stats-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-pdf {
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-family: var(--ff-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-pdf:hover { background: rgba(255, 80, 80, 0.2); }
