@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: coach-tag
+    runtime: node
+    buildCommand: apt-get update && apt-get install -y ffmpeg && npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3000
