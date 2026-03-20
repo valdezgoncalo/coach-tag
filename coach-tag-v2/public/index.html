@@ -6,7 +6,7 @@
   <title>CoachTag</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,22 +15,33 @@
 <header>
   <div class="logo">⚽ <span>Coach</span>Tag</div>
   <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="tagger">🎬 Tagger</button>
-    <button class="tab-btn" data-tab="clips">✂️ Clips</button>
+    <button class="tab-btn active" data-tab="games">📋 Jogos</button>
+    <button class="tab-btn" data-tab="tagger" id="taggerTab" disabled>🎬 Tagger</button>
+    <button class="tab-btn" data-tab="clips" id="clipsTab" disabled>✂️ Clips</button>
+    <button class="tab-btn" data-tab="stats" id="statsTab" disabled>📊 Stats</button>
   </nav>
   <div class="header-right">
-    <button class="btn-secondary" onclick="exportCSV()">↓ CSV</button>
+    <div id="activeGameBadge" class="active-game-badge hidden"></div>
   </div>
 </header>
 
+<!-- ══════════════════ TAB: JOGOS ══════════════════ -->
+<div id="tab-games" class="tab-content active">
+  <div class="games-page">
+    <div class="games-header">
+      <h2>Jogos</h2>
+      <button class="btn-primary" onclick="openModal('modalGame')">＋ Novo Jogo</button>
+    </div>
+    <div id="gamesList" class="games-grid">
+      <p class="empty-state">Nenhum jogo ainda. Cria o primeiro!</p>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════ TAB: TAGGER ══════════════════ -->
-<div id="tab-tagger" class="tab-content active">
+<div id="tab-tagger" class="tab-content hidden">
   <main class="tagger-layout">
-
-    <!-- LEFT: Video + Controls -->
     <section class="video-panel">
-
-      <!-- Upload zone -->
       <div id="uploadZone" class="upload-zone">
         <div class="upload-inner">
           <div class="upload-icon">🎥</div>
@@ -41,38 +52,24 @@
           <button class="btn-primary upload-btn" onclick="document.getElementById('videoFileInput').click()">Seleccionar ficheiro</button>
         </div>
         <div id="uploadProgress" class="upload-progress hidden">
-          <div class="progress-label">
-            <span id="uploadProgressText">A carregar...</span>
-            <span id="uploadPercent">0%</span>
-          </div>
+          <div class="progress-label"><span id="uploadProgressText">A carregar...</span><span id="uploadPercent">0%</span></div>
           <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
         </div>
       </div>
-
-      <!-- Video player -->
       <div id="videoContainer" class="video-container hidden">
-        <video id="video" controls>
-          <source id="videoSrc" src="" type="video/mp4">
-        </video>
+        <video id="video" controls><source id="videoSrc" src="" type="video/mp4"></video>
         <button class="change-video-btn" onclick="changeVideo()">↑ Trocar vídeo</button>
       </div>
-
-      <!-- Controls -->
       <div class="controls">
         <div class="player-row">
           <label>Jogador</label>
           <select id="playerSelect"></select>
           <button class="btn-icon" onclick="openModal('modalPlayer')" title="Adicionar jogador">＋</button>
         </div>
-
-        <!-- Action buttons — rendered dynamically by app.js -->
         <div id="eventButtons" class="event-buttons"></div>
-
-        <!-- Manage actions button -->
         <div class="actions-manage-row">
           <button class="btn-manage-actions" onclick="openModal('modalAction')">＋ Nova acção</button>
         </div>
-
         <div class="shortcuts-hint">
           <span>Atalhos:</span>
           <kbd>P</kbd>Passe <kbd>E</kbd>Perda <kbd>F</kbd>Finalização
@@ -80,12 +77,11 @@
         </div>
       </div>
     </section>
-
-    <!-- RIGHT: Events list -->
     <section class="events-panel">
       <div class="events-header">
         <h2>Eventos <span id="eventCount" class="badge">0</span></h2>
         <div class="events-header-actions">
+          <button class="btn-secondary" style="font-size:0.78rem;padding:5px 10px;" onclick="exportCSV()">↓ CSV</button>
           <button class="btn-export-all" onclick="exportAllClips()">✂️ Exportar todos</button>
           <button class="btn-danger-sm" onclick="clearAllEvents()">Limpar</button>
         </div>
@@ -94,7 +90,6 @@
         <p class="empty-state">Ainda sem eventos marcados.</p>
       </div>
     </section>
-
   </main>
 </div>
 
@@ -102,11 +97,29 @@
 <div id="tab-clips" class="tab-content hidden">
   <div class="clips-page">
     <div class="clips-header">
-      <h2>Clips Exportados</h2>
+      <h2>Clips</h2>
       <button class="btn-secondary" onclick="loadClips()">↺ Actualizar</button>
     </div>
     <div id="clipsList" class="clips-grid">
       <p class="empty-state">Nenhum clip exportado ainda.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ TAB: STATS ══════════════════ -->
+<div id="tab-stats" class="tab-content hidden">
+  <div class="stats-page">
+    <div class="stats-header">
+      <h2>Estatísticas</h2>
+      <div class="stats-filter">
+        <label>Jogo</label>
+        <select id="statsGameFilter" onchange="loadStats()">
+          <option value="">Todos os jogos</option>
+        </select>
+      </div>
+    </div>
+    <div id="statsContent" class="stats-content">
+      <p class="empty-state">Carregando...</p>
     </div>
   </div>
 </div>
@@ -121,7 +134,26 @@
   </div>
 </div>
 
-<!-- ══ MODAL: Adicionar Jogador ══ -->
+<!-- MODAL: Novo Jogo -->
+<div id="modalGame" class="modal hidden">
+  <div class="modal-box">
+    <h3>Novo Jogo</h3>
+    <div class="modal-field">
+      <label>Nome (ex: FC Porto vs Benfica)</label>
+      <input id="newGameName" type="text" placeholder="Nome do jogo" maxlength="60">
+    </div>
+    <div class="modal-field">
+      <label>Data</label>
+      <input id="newGameDate" type="date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modalGame')">Cancelar</button>
+      <button class="btn-primary" onclick="createGame()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Adicionar Jogador -->
 <div id="modalPlayer" class="modal hidden">
   <div class="modal-box">
     <h3>Adicionar Jogador</h3>
@@ -133,7 +165,7 @@
   </div>
 </div>
 
-<!-- ══ MODAL: Adicionar Acção ══ -->
+<!-- MODAL: Nova Acção -->
 <div id="modalAction" class="modal hidden">
   <div class="modal-box">
     <h3>Nova Acção</h3>
@@ -145,10 +177,7 @@
       <label>Nome da acção</label>
       <input id="newActionLabel" type="text" placeholder="Ex: Intercepção" maxlength="30">
     </div>
-
-    <!-- List of custom actions to manage/delete -->
     <div id="customActionsList" class="custom-actions-list"></div>
-
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('modalAction')">Fechar</button>
       <button class="btn-primary" onclick="addAction()">Adicionar</button>
@@ -156,9 +185,7 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast hidden"></div>
-
 <script src="app.js"></script>
 </body>
 </html>
