@@ -508,12 +508,16 @@ async function loadClips() {
       card.className = 'clip-card';
       const label = c.filename.replace('.mp4','').replace(/^clip_/,'').replace(/_/g,' ').replace(/\d+s \d+$/, '').trim();
       card.innerHTML = `
-        <video src="${c.url}" controls muted preload="metadata"></video>
+        <div class="clip-thumb" onclick="openLightbox('${c.url}')">
+          <video src="${c.url}" muted preload="metadata"></video>
+          <div class="clip-play-btn">▶</div>
+        </div>
         <div class="clip-card-info">
           <div class="clip-card-name">${label || c.filename}</div>
           <div class="clip-card-actions">
+            <button class="btn-secondary" style="font-size:0.8rem;padding:6px 12px;" onclick="openLightbox('${c.url}')">▶ Ver</button>
             <a href="${c.url}" download="${c.filename}" class="btn-primary" style="text-decoration:none;font-size:0.8rem;padding:6px 14px;">↓ Download</a>
-            <button class="btn-danger-sm" onclick="deleteClip('${c.filename}')">✕ Apagar</button>
+            <button class="btn-danger-sm" onclick="deleteClip('${c.filename}')">✕</button>
           </div>
         </div>
       `;
@@ -522,6 +526,32 @@ async function loadClips() {
   } catch {
     grid.innerHTML = '<p class="empty-state">Erro ao carregar clips.</p>';
   }
+}
+
+// ─── Lightbox ─────────────────────────────────────────────────────
+function openLightbox(url) {
+  const old = document.getElementById('lightbox');
+  if (old) old.remove();
+
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.className = 'lightbox';
+  lb.innerHTML = `
+    <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+    <div class="lightbox-content">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <video src="${url}" controls autoplay style="width:100%;max-height:80vh;border-radius:10px;background:#000;"></video>
+    </div>
+  `;
+  document.body.appendChild(lb);
+  requestAnimationFrame(() => lb.classList.add('open'));
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+  lb.classList.remove('open');
+  setTimeout(() => lb.remove(), 200);
 }
 
 async function deleteClip(filename) {
