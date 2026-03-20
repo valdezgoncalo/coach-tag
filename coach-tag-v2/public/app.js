@@ -211,53 +211,6 @@ async function deleteGame(ev, id) {
 //  VIDEO
 // ═══════════════════════════════════════════════════════════════════
 
-// ─── Upload tab switcher ─────────────────────────────────────────
-function switchUploadTab(tab) {
-  document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
-  document.getElementById('tabLink').classList.toggle('active', tab === 'link');
-  document.getElementById('uploadPanel').classList.toggle('hidden', tab !== 'upload');
-  document.getElementById('linkPanel').classList.toggle('hidden', tab !== 'link');
-}
-
-// ─── Load video from external link ───────────────────────────────
-function loadVideoFromLink() {
-  if (!currentGameId) { showToast('Selecciona um jogo primeiro', 'error'); return; }
-  let url = document.getElementById('videoLinkInput').value.trim();
-  const hint = document.getElementById('linkHint');
-
-  if (!url) { hint.textContent = 'Cola um link primeiro.'; hint.style.color = 'var(--red)'; return; }
-
-  // Convert Google Drive share link to direct link
-  const driveMatch = url.match(/\/file\/d\/([^/]+)/);
-  if (driveMatch) {
-    url = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-    hint.textContent = 'Link do Google Drive detectado — a converter...';
-    hint.style.color = 'var(--muted)';
-  }
-
-  // Convert Dropbox share link to direct link
-  if (url.includes('dropbox.com') && url.includes('dl=0')) {
-    url = url.replace('dl=0', 'dl=1');
-  }
-
-  // Set video src directly — browser streams it
-  videoSrc.src = url;
-  video.load();
-  uploadZone.classList.add('hidden');
-  videoContainer.classList.remove('hidden');
-  hint.textContent = '';
-
-  // Save meta so game knows it has a video (link-based)
-  fetch(`/games/${currentGameId}/video/link`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url })
-  }).catch(() => {}); // best effort
-
-  showToast('Vídeo carregado via link ✓');
-  loadGames();
-}
-
 // ─── Drag & drop + file input ─────────────────────────────────────
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
@@ -267,14 +220,10 @@ uploadZone.addEventListener('drop', e => {
 });
 uploadZone.addEventListener('click', e => {
   if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-  if (!document.getElementById('linkPanel').classList.contains('hidden')) return;
   document.getElementById('videoFileInput').click();
 });
 document.getElementById('videoFileInput').addEventListener('change', e => {
   if (e.target.files[0]) handleVideoFile(e.target.files[0]);
-});
-document.getElementById('videoLinkInput')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') loadVideoFromLink();
 });
 
 function changeVideo() {
