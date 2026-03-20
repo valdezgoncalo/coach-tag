@@ -391,7 +391,7 @@ async function loadEvents() {
           <div class="event-player">${e.player}</div>
         </div>
         <div class="event-actions">
-          <button class="clip-btn" title="Exportar clip" onclick="exportClip(event,${e.id})">✂</button>
+          <button class="clip-btn" title="Exportar clip" onclick="openClipModal(event,${e.id},${e.time})">✂</button>
           <button title="Editar" onclick="editEvent(event,${e.id})">✏</button>
           <button class="del" title="Apagar" onclick="deleteEvent(event,${e.id})">✕</button>
         </div>`;
@@ -429,19 +429,74 @@ function exportCSV() { window.location.href = `/games/${currentGameId}/events/ex
 //  CLIPS
 // ═══════════════════════════════════════════════════════════════════
 
-async function exportClip(ev, eventId) {
+// ─── Clip settings modal ─────────────────────────────────────────
+function openClipModal(ev, eventId, eventTime) {
   ev.stopPropagation();
-  const row = document.querySelector(`.event-item[data-id="${eventId}"]`);
+  const old = document.getElementById('clipModal'); if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'clipModal'; modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-box clip-modal-box">
+      <h3>✂ Definir intervalo do clip</h3>
+      <p class="clip-modal-hint">Evento marcado em <strong>${fmt(eventTime)}</strong></p>
+      <div class="clip-interval-row">
+        <div class="modal-field">
+          <label>Início (segundos)</label>
+          <input id="clipStart" type="number" min="0" step="0.5" value="${Math.max(0, (eventTime - 5).toFixed(1))}" placeholder="0">
+        </div>
+        <div class="clip-interval-arrow">→</div>
+        <div class="modal-field">
+          <label>Fim (segundos)</label>
+          <input id="clipEnd" type="number" min="0" step="0.5" value="${(eventTime + 10).toFixed(1)}" placeholder="60">
+        </div>
+      </div>
+      <div class="clip-duration-hint" id="clipDurationHint"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="document.getElementById('clipModal').remove()">Cancelar</button>
+        <button class="btn-primary" onclick="doExportClip(${eventId})">Exportar MP4</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Live duration hint
+  function updateHint() {
+    const s = parseFloat(document.getElementById('clipStart').value) || 0;
+    const e = parseFloat(document.getElementById('clipEnd').value) || 0;
+    const dur = e - s;
+    const hint = document.getElementById('clipDurationHint');
+    if (dur <= 0) { hint.textContent = '⚠ O fim deve ser depois do início'; hint.style.color = 'var(--red)'; }
+    else { hint.textContent = `Duração: ${dur.toFixed(1)}s`; hint.style.color = 'var(--muted)'; }
+  }
+  document.getElementById('clipStart').addEventListener('input', updateHint);
+  document.getElementById('clipEnd').addEventListener('input', updateHint);
+  updateHint();
+}
+
+async function doExportClip(eventId) {
+  const startVal = parseFloat(document.getElementById('clipStart').value);
+  const endVal   = parseFloat(document.getElementById('clipEnd').value);
+  if (isNaN(startVal) || isNaN(endVal) || endVal <= startVal) {
+    showToast('Intervalo inválido', 'error'); return;
+  }
+  document.getElementById('clipModal').remove();
+
+  const row     = document.querySelector(`.event-item[data-id="${eventId}"]`);
   const clipBtn = row?.querySelector('.clip-btn');
-  if (row) row.classList.add('exporting');
+  if (row)     row.classList.add('exporting');
   if (clipBtn) clipBtn.innerHTML = '<span class="spin">⟳</span>';
   showToast('A exportar clip...');
   try {
-    const res = await fetch(`/games/${currentGameId}/clips/export`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId }) });
+    const res = await fetch(`/games/${currentGameId}/clips/export`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, startTime: startVal, endTime: endVal })
+    });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
     const { url, filename } = await res.json();
     const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
     showToast('Clip exportado ✓');
+    loadClips();
   } catch (e) { showToast(e.message || 'Erro ao exportar', 'error'); }
   finally { if (row) row.classList.remove('exporting'); if (clipBtn) clipBtn.innerHTML = '✂'; }
 }
