@@ -87,10 +87,10 @@ header {
 /* ═══════════════════════════════════════════════
    TAGGER LAYOUT
    ═══════════════════════════════════════════════ */
-.tagger-layout { display: grid; grid-template-columns: 1fr 360px; flex: 1; min-height: 0; height: calc(100vh - var(--header-h)); position: relative; z-index: 1; }
+.tagger-layout { display: grid; grid-template-columns: 1fr 360px; flex: 1; min-height: 0; height: calc(100vh - var(--header-h)); position: relative; z-index: 1; overflow: hidden; }
 
 /* ─── VIDEO PANEL ─────────────────────────────── */
-.video-panel { display: flex; flex-direction: column; padding: 18px; gap: 14px; border-right: 1px solid var(--border); overflow-y: auto; }
+.video-panel { display: flex; flex-direction: column; padding: 14px 18px; gap: 10px; border-right: 1px solid var(--border); overflow-y: auto; min-height: 0; }
 
 .upload-zone { background: var(--surface); border: 2px dashed var(--border2); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; transition: border-color 0.2s; cursor: pointer; padding: 28px; }
 .upload-zone.drag-over { border-color: var(--green); background: rgba(0,230,118,0.04); }
@@ -110,11 +110,11 @@ header {
 
 .video-container { position: relative; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--border); }
 .video-container.hidden { display: none; }
-video { width: 100%; display: block; max-height: 46vh; object-fit: contain; }
+video { width: 100%; display: block; max-height: 38vh; object-fit: contain; }
 .change-video-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); color: var(--text); border: 1px solid var(--border2); border-radius: 7px; padding: 4px 10px; font-size: 0.75rem; font-family: var(--ff-body); cursor: pointer; }
 
 /* ─── CONTROLS ────────────────────────────────── */
-.controls { display: flex; flex-direction: column; gap: 12px; }
+.controls { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
 .player-row { display: flex; align-items: center; gap: 8px; }
 .player-row label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); white-space: nowrap; }
 select { flex: 1; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-family: var(--ff-body); font-size: 0.88rem; cursor: pointer; outline: none; transition: border-color 0.2s; }
@@ -123,7 +123,7 @@ select:focus { border-color: var(--green); }
 .btn-icon:hover { background: var(--surface3); border-color: var(--green); }
 
 .event-buttons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
-.tag-btn { padding: 10px 5px; border: none; border-radius: var(--radius); font-family: var(--ff-body); font-size: 0.75rem; font-weight: 600; cursor: pointer; position: relative; overflow: hidden; transition: transform 0.1s; }
+.tag-btn { padding: 8px 4px; border: none; border-radius: var(--radius); font-family: var(--ff-body); font-size: 0.73rem; font-weight: 600; cursor: pointer; position: relative; overflow: hidden; transition: transform 0.1s; }
 .tag-btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.1); opacity: 0; transition: opacity 0.15s; }
 .tag-btn:hover::after { opacity: 1; }
 .tag-btn:active { transform: scale(0.93); }
