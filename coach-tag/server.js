@@ -1,25 +1,38 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
+
 const app = express();
 
 app.use(express.json());
 app.use(express.static('public'));
 
-const EVENTS_FILE = './data/events.json';
-const PLAYERS_FILE = './data/players.json';
+// Caminhos seguros (IMPORTANTE para o Render)
+const EVENTS_FILE = path.join(__dirname, 'data/events.json');
+const PLAYERS_FILE = path.join(__dirname, 'data/players.json');
 
+// ===== FUNÇÕES =====
 function readJSON(file) {
-    return JSON.parse(fs.readFileSync(file));
+    try {
+        const data = fs.readFileSync(file);
+        return JSON.parse(data);
+    } catch (err) {
+        return [];
+    }
 }
 
 function writeJSON(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
+// ===== ROUTES =====
+
+// Players
 app.get('/players', (req, res) => {
     res.json(readJSON(PLAYERS_FILE));
 });
 
+// Events
 app.get('/events', (req, res) => {
     res.json(readJSON(EVENTS_FILE));
 });
@@ -42,13 +55,13 @@ app.put('/events/:id', (req, res) => {
     const events = readJSON(EVENTS_FILE);
     const id = parseInt(req.params.id);
 
-    const updated = events.map(e => 
+    const updated = events.map(e =>
         e.id === id ? { ...e, ...req.body } : e
     );
 
     writeJSON(EVENTS_FILE, updated);
 
-    res.json({ message: 'Atualizado' });
+    res.json({ message: 'Evento atualizado' });
 });
 
 app.delete('/events/:id', (req, res) => {
@@ -59,9 +72,12 @@ app.delete('/events/:id', (req, res) => {
 
     writeJSON(EVENTS_FILE, filtered);
 
-    res.json({ message: 'Removido' });
+    res.json({ message: 'Evento removido' });
 });
 
-app.listen(3000, () => {
-    console.log('http://localhost:3000');
+// ===== PORTA CORRETA (CRÍTICO PARA RENDER) =====
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Servidor a correr na porta ${PORT}`);
 });
