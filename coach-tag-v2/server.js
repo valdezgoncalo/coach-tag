@@ -1,8 +1,12 @@
-const express = require('express');
-const fs      = require('fs');
-const path    = require('path');
-const multer  = require('multer');
-const ffmpeg  = require('fluent-ffmpeg');
+const express      = require('express');
+const fs           = require('fs');
+const path         = require('path');
+const multer       = require('multer');
+const ffmpeg       = require('fluent-ffmpeg');
+const ffmpegPath   = require('ffmpeg-static');
+
+// Use bundled ffmpeg binary (works on Render free tier)
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
 app.use(express.json());
