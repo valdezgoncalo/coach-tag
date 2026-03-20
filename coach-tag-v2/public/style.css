@@ -227,6 +227,88 @@ select:focus { border-color: var(--green); }
 .tag-btn.livreD  { background: linear-gradient(140deg,#880e4f,#e91e63); color:#fff; box-shadow: 0 3px 12px #e91e6333; }
 .tag-btn.fora    { background: linear-gradient(140deg,#bf360c,#ff5722); color:#fff; box-shadow: 0 3px 12px #ff572233; }
 
+/* ─── MANAGE ACTIONS ROW ──────────────────────────── */
+.actions-manage-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-manage-actions {
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-family: var(--ff-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.btn-manage-actions:hover {
+  color: var(--green);
+  border-color: rgba(0,230,118,0.3);
+  background: rgba(0,230,118,0.04);
+}
+
+/* ─── MODAL FIELDS ────────────────────────────────── */
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.modal-field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+/* ─── CUSTOM ACTIONS LIST (inside modal) ──────────── */
+.custom-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+.custom-actions-list:empty::before {
+  content: 'Sem acções personalizadas ainda.';
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 8px 0;
+  display: block;
+}
+.custom-actions-list::-webkit-scrollbar { width: 3px; }
+.custom-actions-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.custom-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 0.85rem;
+}
+.custom-action-row .ca-emoji { font-size: 1rem; }
+.custom-action-row .ca-label { flex: 1; }
+.custom-action-row .ca-del {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 5px;
+  width: 24px; height: 24px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.custom-action-row .ca-del:hover { color: var(--red); border-color: var(--red); }
+
 .shortcuts-hint {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   font-size: 0.73rem; color: var(--muted); padding: 6px 0 0;
@@ -450,3 +532,57 @@ kbd {
   .events-panel { max-height: 480px; }
   .event-buttons { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ─── CLIP THUMB ──────────────────────────────── */
+.clip-thumb {
+  position: relative;
+  cursor: pointer;
+  background: #000;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+}
+.clip-thumb video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.clip-play-btn {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; color: rgba(255,255,255,0.85);
+  background: rgba(0,0,0,0.3);
+  opacity: 0; transition: opacity 0.2s;
+}
+.clip-thumb:hover .clip-play-btn { opacity: 1; }
+
+/* ─── LIGHTBOX ────────────────────────────────── */
+.lightbox {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
+.lightbox.open { opacity: 1; pointer-events: all; }
+
+.lightbox-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(6px);
+}
+.lightbox-content {
+  position: relative; z-index: 1;
+  width: 90vw; max-width: 1000px;
+  transform: scale(0.95); transition: transform 0.2s;
+}
+.lightbox.open .lightbox-content { transform: scale(1); }
+
+.lightbox-close {
+  position: absolute; top: -40px; right: 0;
+  background: none; border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; border-radius: 6px;
+  width: 32px; height: 32px; font-size: 0.85rem;
+  cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.1); }
