@@ -509,10 +509,215 @@ async function deleteClip(filename) {
 function openLightbox(url) {
   const old = document.getElementById('lightbox'); if (old) old.remove();
   const lb = document.createElement('div'); lb.id = 'lightbox'; lb.className = 'lightbox';
-  lb.innerHTML = `<div class="lightbox-backdrop" onclick="closeLightbox()"></div><div class="lightbox-content"><button class="lightbox-close" onclick="closeLightbox()">✕</button><video src="${url}" controls autoplay style="width:100%;max-height:80vh;border-radius:10px;background:#000;"></video></div>`;
-  document.body.appendChild(lb); requestAnimationFrame(() => lb.classList.add('open'));
+  lb.innerHTML = `
+    <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+    <div class="lightbox-content">
+      <!-- top bar: close + export -->
+      <div class="lightbox-topbar">
+        <div class="lb-hint">Pausa o vídeo para desenhar</div>
+        <div class="lb-topbar-actions">
+          <button class="lb-btn-export" onclick="exportLightboxFrame()" title="Guardar frame com desenho">📷 Guardar imagem</button>
+          <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        </div>
+      </div>
+      <!-- video wrapper with canvas on top -->
+      <div class="lb-video-wrap">
+        <video id="lbVideo" src="${url}" controls autoplay></video>
+        <canvas id="lbCanvas" class="lb-canvas hidden"></canvas>
+        <!-- drawing toolbar — same design as main tagger -->
+        <div id="lbToolbar" class="draw-toolbar lb-draw-toolbar hidden">
+          <div class="draw-tools">
+            <button class="draw-tool lb-tool active" data-tool="arrow" title="Seta">➜</button>
+            <button class="draw-tool lb-tool" data-tool="circle" title="Círculo">◯</button>
+            <button class="draw-tool lb-tool" data-tool="rect" title="Rectângulo">▭</button>
+            <button class="draw-tool lb-tool" data-tool="freehand" title="Livre">✏</button>
+            <button class="draw-tool lb-tool" data-tool="text" title="Texto">T</button>
+          </div>
+          <div class="draw-colors">
+            <button class="draw-color lb-color active" data-color="#ff3d3d" style="background:#ff3d3d"></button>
+            <button class="draw-color lb-color" data-color="#00e676" style="background:#00e676"></button>
+            <button class="draw-color lb-color" data-color="#ffeb3b" style="background:#ffeb3b"></button>
+            <button class="draw-color lb-color" data-color="#ffffff" style="background:#ffffff"></button>
+            <button class="draw-color lb-color" data-color="#2979ff" style="background:#2979ff"></button>
+          </div>
+          <div class="draw-actions">
+            <button class="draw-action" onclick="lbUndo()" title="Desfazer">↩</button>
+            <button class="draw-action" onclick="lbClear()" title="Limpar">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(lb);
+  requestAnimationFrame(() => lb.classList.add('open'));
+  initLightboxDrawing();
 }
-function closeLightbox() { const lb = document.getElementById('lightbox'); if (!lb) return; lb.classList.remove('open'); setTimeout(() => lb.remove(), 200); }
+
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+  // stop video
+  const v = document.getElementById('lbVideo');
+  if (v) { v.pause(); v.src = ''; }
+  lb.classList.remove('open');
+  setTimeout(() => lb.remove(), 200);
+}
+
+// ─── Lightbox drawing ─────────────────────────────────────────────
+let lbTool = 'arrow', lbColor = '#ff3d3d';
+let lbDrawing = false, lbStartX = 0, lbStartY = 0;
+let lbHistory = [], lbCurrentSnap = null;
+
+function initLightboxDrawing() {
+  const lbVideo   = document.getElementById('lbVideo');
+  const lbCanvas  = document.getElementById('lbCanvas');
+  const lbToolbar = document.getElementById('lbToolbar');
+  if (!lbVideo || !lbCanvas) return;
+
+  const lbCtx = lbCanvas.getContext('2d');
+
+  // Show/hide canvas on pause/play
+  lbVideo.addEventListener('pause', () => {
+    syncLbCanvas();
+    lbCanvas.classList.remove('hidden');
+    lbToolbar.classList.remove('hidden');
+  });
+  lbVideo.addEventListener('play', () => {
+    lbClear();
+    lbCanvas.classList.add('hidden');
+    lbToolbar.classList.add('hidden');
+  });
+  lbVideo.addEventListener('ended', () => {
+    lbCanvas.classList.add('hidden');
+    lbToolbar.classList.add('hidden');
+  });
+
+  function syncLbCanvas() {
+    const rect = lbVideo.getBoundingClientRect();
+    const wrapRect = lbVideo.parentElement.getBoundingClientRect();
+    lbCanvas.style.top    = (rect.top - wrapRect.top) + 'px';
+    lbCanvas.style.left   = (rect.left - wrapRect.left) + 'px';
+    lbCanvas.style.width  = rect.width + 'px';
+    lbCanvas.style.height = rect.height + 'px';
+    lbCanvas.width  = rect.width;
+    lbCanvas.height = rect.height;
+  }
+
+  // Tool & colour selection
+  document.querySelectorAll('.lb-tool').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lb-tool').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      lbTool = btn.dataset.tool;
+      lbCanvas.style.cursor = lbTool === 'text' ? 'text' : 'crosshair';
+    });
+  });
+  document.querySelectorAll('.lb-color').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lb-color').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      lbColor = btn.dataset.color;
+    });
+  });
+
+  function setLbStyle() {
+    lbCtx.strokeStyle = lbColor; lbCtx.fillStyle = lbColor;
+    lbCtx.lineWidth = 3; lbCtx.lineCap = 'round'; lbCtx.lineJoin = 'round';
+    lbCtx.shadowColor = 'rgba(0,0,0,0.6)'; lbCtx.shadowBlur = 3;
+  }
+
+  function lbSaveSnap() { lbCurrentSnap = lbCtx.getImageData(0, 0, lbCanvas.width, lbCanvas.height); }
+
+  window.lbUndo = () => { if (!lbHistory.length) return; lbCtx.putImageData(lbHistory.pop(), 0, 0); };
+  window.lbClear = () => { lbCtx.clearRect(0, 0, lbCanvas.width, lbCanvas.height); lbHistory = []; };
+
+  function lbDrawArrow(x1, y1, x2, y2) {
+    const h = 18, a = Math.atan2(y2-y1, x2-x1);
+    lbCtx.beginPath(); lbCtx.moveTo(x1,y1); lbCtx.lineTo(x2,y2); lbCtx.stroke();
+    lbCtx.beginPath();
+    lbCtx.moveTo(x2,y2);
+    lbCtx.lineTo(x2 - h*Math.cos(a-Math.PI/7), y2 - h*Math.sin(a-Math.PI/7));
+    lbCtx.lineTo(x2 - h*Math.cos(a+Math.PI/7), y2 - h*Math.sin(a+Math.PI/7));
+    lbCtx.closePath(); lbCtx.fill();
+  }
+
+  function lbPreview(x, y) {
+    if (!lbCurrentSnap) return;
+    lbCtx.putImageData(lbCurrentSnap, 0, 0); setLbStyle();
+    const w = x-lbStartX, h = y-lbStartY;
+    if (lbTool==='arrow') lbDrawArrow(lbStartX,lbStartY,x,y);
+    else if (lbTool==='circle') { lbCtx.beginPath(); lbCtx.ellipse(lbStartX+w/2,lbStartY+h/2,Math.abs(w/2),Math.abs(h/2),0,0,Math.PI*2); lbCtx.stroke(); }
+    else if (lbTool==='rect') { lbCtx.beginPath(); lbCtx.strokeRect(lbStartX,lbStartY,w,h); }
+  }
+
+  function lbGetPos(e) {
+    const rect = lbCanvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx-rect.left, y: cy-rect.top };
+  }
+
+  lbCanvas.addEventListener('mousedown', e => {
+    if (lbTool==='text') {
+      const pos = lbGetPos(e), label = prompt('Texto:'); if (!label) return;
+      lbSaveSnap(); lbHistory.push(lbCtx.getImageData(0,0,lbCanvas.width,lbCanvas.height));
+      setLbStyle(); lbCtx.font='bold 20px DM Sans,sans-serif';
+      lbCtx.strokeStyle='rgba(0,0,0,0.8)'; lbCtx.lineWidth=3;
+      lbCtx.strokeText(label,pos.x,pos.y); lbCtx.fillText(label,pos.x,pos.y); return;
+    }
+    lbDrawing=true; const pos=lbGetPos(e); lbStartX=pos.x; lbStartY=pos.y; lbSaveSnap();
+    if (lbTool==='freehand') { lbHistory.push(lbCtx.getImageData(0,0,lbCanvas.width,lbCanvas.height)); setLbStyle(); lbCtx.beginPath(); lbCtx.moveTo(lbStartX,lbStartY); }
+  });
+  lbCanvas.addEventListener('mousemove', e => {
+    if (!lbDrawing) return; const pos=lbGetPos(e);
+    if (lbTool==='freehand') { lbCtx.lineTo(pos.x,pos.y); lbCtx.stroke(); }
+    else lbPreview(pos.x,pos.y);
+  });
+  lbCanvas.addEventListener('mouseup', e => {
+    if (!lbDrawing) return; lbDrawing=false; const pos=lbGetPos(e);
+    if (lbTool!=='freehand') {
+      lbHistory.push(lbCtx.getImageData(0,0,lbCanvas.width,lbCanvas.height)); setLbStyle();
+      const w=pos.x-lbStartX, h=pos.y-lbStartY;
+      if (lbTool==='arrow') lbDrawArrow(lbStartX,lbStartY,pos.x,pos.y);
+      else if (lbTool==='circle') { lbCtx.beginPath(); lbCtx.ellipse(lbStartX+w/2,lbStartY+h/2,Math.abs(w/2),Math.abs(h/2),0,0,Math.PI*2); lbCtx.stroke(); }
+      else if (lbTool==='rect') { lbCtx.beginPath(); lbCtx.strokeRect(lbStartX,lbStartY,w,h); }
+    }
+    lbCtx.beginPath();
+  });
+  lbCanvas.addEventListener('mouseleave', e => { if (lbDrawing) { lbDrawing=false; lbCtx.beginPath(); } });
+  lbCanvas.addEventListener('touchstart', e => { e.preventDefault(); lbCanvas.dispatchEvent(new MouseEvent('mousedown', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY })); }, {passive:false});
+  lbCanvas.addEventListener('touchmove',  e => { e.preventDefault(); lbCanvas.dispatchEvent(new MouseEvent('mousemove', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY })); }, {passive:false});
+  lbCanvas.addEventListener('touchend',   e => { e.preventDefault(); lbCanvas.dispatchEvent(new MouseEvent('mouseup',   {})); }, {passive:false});
+}
+
+// ─── Export frame + drawing as image ─────────────────────────────
+function exportLightboxFrame() {
+  const lbVideo  = document.getElementById('lbVideo');
+  const lbCanvas = document.getElementById('lbCanvas');
+  if (!lbVideo) return;
+
+  // Draw video frame + canvas annotations onto a temp canvas
+  const temp = document.createElement('canvas');
+  temp.width  = lbVideo.videoWidth  || lbCanvas.width;
+  temp.height = lbVideo.videoHeight || lbCanvas.height;
+  const tCtx  = temp.getContext('2d');
+
+  // Draw the current video frame
+  tCtx.drawImage(lbVideo, 0, 0, temp.width, temp.height);
+
+  // Draw canvas annotations scaled to video resolution
+  if (!lbCanvas.classList.contains('hidden') && lbCanvas.width > 0) {
+    tCtx.drawImage(lbCanvas, 0, 0, temp.width, temp.height);
+  }
+
+  // Download as PNG
+  const ts   = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const link = document.createElement('a');
+  link.download = `coachtag-frame-${ts}.png`;
+  link.href = temp.toDataURL('image/png');
+  link.click();
+  showToast('Imagem guardada ✓');
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  STATS
