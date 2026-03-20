@@ -48,34 +48,11 @@
         <div class="upload-inner">
           <div class="upload-icon">🎥</div>
           <h2>Importar vídeo</h2>
-
-          <!-- Tab switcher: Upload vs Link -->
-          <div class="upload-tabs">
-            <button class="upload-tab active" id="tabUpload" onclick="switchUploadTab('upload')">⬆ Upload</button>
-            <button class="upload-tab" id="tabLink" onclick="switchUploadTab('link')">🔗 Link</button>
-          </div>
-
-          <!-- Upload panel -->
-          <div id="uploadPanel">
-            <p>Arrasta aqui ou clica para seleccionar</p>
-            <p class="upload-hint">MP4 · MOV · AVI · MKV · WebM — até 4 GB</p>
-            <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.mov,.avi,.mkv,.webm" hidden>
-            <button class="btn-primary upload-btn" onclick="document.getElementById('videoFileInput').click()">Seleccionar ficheiro</button>
-          </div>
-
-          <!-- Link panel -->
-          <div id="linkPanel" class="hidden">
-            <p class="upload-hint">Cola um link directo para o vídeo</p>
-            <p class="upload-hint" style="margin-top:4px;">Google Drive · Dropbox · OneDrive · URL directo MP4</p>
-            <div class="link-input-row">
-              <input id="videoLinkInput" type="url" placeholder="https://..." class="link-input">
-              <button class="btn-primary" onclick="loadVideoFromLink()">Carregar</button>
-            </div>
-            <p class="link-hint" id="linkHint"></p>
-          </div>
+          <p>Arrasta aqui ou clica para seleccionar</p>
+          <p class="upload-hint">MP4 · MOV · AVI · MKV · WebM — até 4 GB</p>
+          <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.mov,.avi,.mkv,.webm" hidden>
+          <button class="btn-primary upload-btn" onclick="document.getElementById('videoFileInput').click()">Seleccionar ficheiro</button>
         </div>
-
-        <!-- Progress bar (shared) -->
         <div id="uploadProgress" class="upload-progress hidden">
           <div class="progress-label"><span id="uploadProgressText">A carregar...</span><span id="uploadPercent">0%</span></div>
           <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
