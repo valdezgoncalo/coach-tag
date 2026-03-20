@@ -654,3 +654,219 @@ document.getElementById('newGameName').addEventListener('keydown', e => { if (e.
   await loadPlayers();
   await loadActions();
 })();
+
+// ═══════════════════════════════════════════════════════════════════
+//  DRAWING ON VIDEO
+// ═══════════════════════════════════════════════════════════════════
+
+const drawCanvas  = document.getElementById('drawCanvas');
+const drawToolbar = document.getElementById('drawToolbar');
+const ctx         = drawCanvas.getContext('2d');
+
+let drawTool    = 'arrow';   // active tool
+let drawColor   = '#ff3d3d'; // active colour
+let isDrawing   = false;
+let startX      = 0, startY = 0;
+let drawHistory = [];        // for undo — array of ImageData snapshots
+let currentSnap = null;      // snapshot before current stroke
+
+// ─── Show/hide canvas on play/pause ──────────────────────────────
+video.addEventListener('pause', () => {
+  if (!videoContainer.classList.contains('hidden')) {
+    syncCanvasSize();
+    drawCanvas.classList.remove('hidden');
+    drawToolbar.classList.remove('hidden');
+  }
+});
+
+video.addEventListener('play', () => {
+  clearDrawing();
+  drawCanvas.classList.add('hidden');
+  drawToolbar.classList.add('hidden');
+});
+
+// Also hide if video ends
+video.addEventListener('ended', () => {
+  drawCanvas.classList.add('hidden');
+  drawToolbar.classList.add('hidden');
+});
+
+// ─── Sync canvas size to video element ───────────────────────────
+function syncCanvasSize() {
+  const rect = video.getBoundingClientRect();
+  const containerRect = videoContainer.getBoundingClientRect();
+  // Position canvas exactly over the video element
+  drawCanvas.style.top    = (rect.top - containerRect.top) + 'px';
+  drawCanvas.style.left   = (rect.left - containerRect.left) + 'px';
+  drawCanvas.style.width  = rect.width + 'px';
+  drawCanvas.style.height = rect.height + 'px';
+  drawCanvas.width  = rect.width;
+  drawCanvas.height = rect.height;
+}
+
+window.addEventListener('resize', () => {
+  if (!drawCanvas.classList.contains('hidden')) {
+    // Preserve drawing through resize
+    const snap = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+    syncCanvasSize();
+    ctx.putImageData(snap, 0, 0);
+  }
+});
+
+// ─── Tool selection ───────────────────────────────────────────────
+document.querySelectorAll('.draw-tool').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.draw-tool').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawTool = btn.dataset.tool;
+    drawCanvas.style.cursor = drawTool === 'text' ? 'text' : 'crosshair';
+  });
+});
+
+document.querySelectorAll('.draw-color').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.draw-color').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawColor = btn.dataset.color;
+  });
+});
+
+// ─── Canvas style helpers ─────────────────────────────────────────
+function setCtxStyle() {
+  ctx.strokeStyle = drawColor;
+  ctx.fillStyle   = drawColor;
+  ctx.lineWidth   = 3;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur  = 3;
+}
+
+// ─── Undo ─────────────────────────────────────────────────────────
+function saveSnapshot() {
+  currentSnap = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+}
+
+function undoDrawing() {
+  if (!drawHistory.length) return;
+  const prev = drawHistory.pop();
+  ctx.putImageData(prev, 0, 0);
+}
+
+function clearDrawing() {
+  ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  drawHistory = [];
+}
+
+// ─── Mouse / touch position ───────────────────────────────────────
+function getPos(e) {
+  const rect = drawCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+// ─── Draw arrow ───────────────────────────────────────────────────
+function drawArrow(x1, y1, x2, y2) {
+  const headLen = 18;
+  const angle   = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/7), y2 - headLen * Math.sin(angle - Math.PI/7));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/7), y2 - headLen * Math.sin(angle + Math.PI/7));
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ─── Draw shape preview (while dragging) ─────────────────────────
+function drawPreview(x, y) {
+  if (!currentSnap) return;
+  ctx.putImageData(currentSnap, 0, 0);
+  setCtxStyle();
+  const w = x - startX, h = y - startY;
+
+  if (drawTool === 'arrow') {
+    drawArrow(startX, startY, x, y);
+  } else if (drawTool === 'circle') {
+    ctx.beginPath();
+    ctx.ellipse(startX + w/2, startY + h/2, Math.abs(w/2), Math.abs(h/2), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (drawTool === 'rect') {
+    ctx.beginPath();
+    ctx.strokeRect(startX, startY, w, h);
+  }
+}
+
+// ─── Pointer events ───────────────────────────────────────────────
+drawCanvas.addEventListener('mousedown', onPointerDown);
+drawCanvas.addEventListener('mousemove', onPointerMove);
+drawCanvas.addEventListener('mouseup',   onPointerUp);
+drawCanvas.addEventListener('mouseleave', onPointerUp);
+drawCanvas.addEventListener('touchstart', e => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+drawCanvas.addEventListener('touchmove',  e => { e.preventDefault(); onPointerMove(e); }, { passive: false });
+drawCanvas.addEventListener('touchend',   e => { e.preventDefault(); onPointerUp(e); },   { passive: false });
+
+function onPointerDown(e) {
+  if (drawTool === 'text') {
+    const pos   = getPos(e);
+    const label = prompt('Texto:');
+    if (!label) return;
+    saveSnapshot();
+    drawHistory.push(ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+    setCtxStyle();
+    ctx.shadowBlur = 4;
+    ctx.font = 'bold 20px DM Sans, sans-serif';
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(label, pos.x, pos.y);
+    ctx.fillText(label, pos.x, pos.y);
+    return;
+  }
+  isDrawing = true;
+  const pos = getPos(e);
+  startX = pos.x; startY = pos.y;
+  saveSnapshot();
+  if (drawTool === 'freehand') {
+    drawHistory.push(ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+    setCtxStyle();
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+  }
+}
+
+function onPointerMove(e) {
+  if (!isDrawing) return;
+  const pos = getPos(e);
+  if (drawTool === 'freehand') {
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  } else {
+    drawPreview(pos.x, pos.y);
+  }
+}
+
+function onPointerUp(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  const pos = getPos(e);
+  if (drawTool !== 'freehand') {
+    drawHistory.push(ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+    setCtxStyle();
+    const w = pos.x - startX, h = pos.y - startY;
+    if (drawTool === 'arrow') {
+      drawArrow(startX, startY, pos.x, pos.y);
+    } else if (drawTool === 'circle') {
+      ctx.beginPath();
+      ctx.ellipse(startX + w/2, startY + h/2, Math.abs(w/2), Math.abs(h/2), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (drawTool === 'rect') {
+      ctx.beginPath();
+      ctx.strokeRect(startX, startY, w, h);
+    }
+  }
+  ctx.beginPath(); // reset path for freehand
+}
