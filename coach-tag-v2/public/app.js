@@ -211,43 +211,151 @@ async function deleteGame(ev, id) {
 //  VIDEO
 // ═══════════════════════════════════════════════════════════════════
 
+// ─── Upload tab switcher ─────────────────────────────────────────
+function switchUploadTab(tab) {
+  document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+  document.getElementById('tabLink').classList.toggle('active', tab === 'link');
+  document.getElementById('uploadPanel').classList.toggle('hidden', tab !== 'upload');
+  document.getElementById('linkPanel').classList.toggle('hidden', tab !== 'link');
+}
+
+// ─── Load video from external link ───────────────────────────────
+function loadVideoFromLink() {
+  if (!currentGameId) { showToast('Selecciona um jogo primeiro', 'error'); return; }
+  let url = document.getElementById('videoLinkInput').value.trim();
+  const hint = document.getElementById('linkHint');
+
+  if (!url) { hint.textContent = 'Cola um link primeiro.'; hint.style.color = 'var(--red)'; return; }
+
+  // Convert Google Drive share link to direct link
+  const driveMatch = url.match(/\/file\/d\/([^/]+)/);
+  if (driveMatch) {
+    url = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+    hint.textContent = 'Link do Google Drive detectado — a converter...';
+    hint.style.color = 'var(--muted)';
+  }
+
+  // Convert Dropbox share link to direct link
+  if (url.includes('dropbox.com') && url.includes('dl=0')) {
+    url = url.replace('dl=0', 'dl=1');
+  }
+
+  // Set video src directly — browser streams it
+  videoSrc.src = url;
+  video.load();
+  uploadZone.classList.add('hidden');
+  videoContainer.classList.remove('hidden');
+  hint.textContent = '';
+
+  // Save meta so game knows it has a video (link-based)
+  fetch(`/games/${currentGameId}/video/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  }).catch(() => {}); // best effort
+
+  showToast('Vídeo carregado via link ✓');
+  loadGames();
+}
+
+// ─── Drag & drop + file input ─────────────────────────────────────
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleVideoFile(e.dataTransfer.files[0]); });
-uploadZone.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') return; document.getElementById('videoFileInput').click(); });
-document.getElementById('videoFileInput').addEventListener('change', e => { if (e.target.files[0]) handleVideoFile(e.target.files[0]); });
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleVideoFile(e.dataTransfer.files[0]);
+});
+uploadZone.addEventListener('click', e => {
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+  if (!document.getElementById('linkPanel').classList.contains('hidden')) return;
+  document.getElementById('videoFileInput').click();
+});
+document.getElementById('videoFileInput').addEventListener('change', e => {
+  if (e.target.files[0]) handleVideoFile(e.target.files[0]);
+});
+document.getElementById('videoLinkInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadVideoFromLink();
+});
 
-function changeVideo() { videoContainer.classList.add('hidden'); uploadZone.classList.remove('hidden'); video.src = ''; }
+function changeVideo() {
+  videoContainer.classList.add('hidden');
+  uploadZone.classList.remove('hidden');
+  video.src = '';
+}
 
 async function handleVideoFile(file) {
   if (!currentGameId) { showToast('Selecciona um jogo primeiro', 'error'); return; }
+
   const progressWrap = document.getElementById('uploadProgress');
   const progressBar  = document.getElementById('progressBar');
   const progressText = document.getElementById('uploadProgressText');
   const percentLabel = document.getElementById('uploadPercent');
-  progressWrap.classList.remove('hidden'); progressBar.style.width = '0%';
+  const speedLabel   = document.getElementById('uploadSpeed');
 
-  const formData = new FormData(); formData.append('video', file);
+  progressWrap.classList.remove('hidden');
+  progressBar.style.width = '0%';
+  progressText.textContent = 'A carregar...';
+  percentLabel.textContent = '0%';
+
+  const formData = new FormData();
+  formData.append('video', file);
+
+  let startTime = Date.now(), lastLoaded = 0;
+
   try {
     await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `/games/${currentGameId}/video`);
+
       xhr.upload.onprogress = e => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          progressBar.style.width = pct + '%'; percentLabel.textContent = pct + '%';
-          if (pct === 100) progressText.textContent = 'A processar...';
+        if (!e.lengthComputable) return;
+        const pct      = Math.round((e.loaded / e.total) * 100);
+        const elapsed  = (Date.now() - startTime) / 1000;
+        const speed    = e.loaded / elapsed; // bytes/s
+        const remaining = (e.total - e.loaded) / speed;
+
+        progressBar.style.width = pct + '%';
+        percentLabel.textContent = pct + '%';
+
+        if (pct === 100) {
+          progressText.textContent = 'A processar no servidor...';
+          speedLabel.textContent = '';
+        } else {
+          progressText.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
+          speedLabel.textContent   = `${formatBytes(speed)}/s · ${formatTime(remaining)} restantes`;
         }
+        lastLoaded = e.loaded;
       };
-      xhr.onload  = () => xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText));
+
+      xhr.onload  = () => xhr.status < 300 ? resolve() : reject(new Error('Erro no servidor'));
       xhr.onerror = () => reject(new Error('Erro de rede'));
       xhr.send(formData);
     });
+
     videoSrc.src = `/games/${currentGameId}/video/stream`;
-    video.load(); uploadZone.classList.add('hidden'); videoContainer.classList.remove('hidden');
-    progressWrap.classList.add('hidden'); showToast('Vídeo carregado ✓');
+    video.load();
+    uploadZone.classList.add('hidden');
+    videoContainer.classList.remove('hidden');
+    progressWrap.classList.add('hidden');
+    showToast('Vídeo carregado ✓');
     loadGames();
-  } catch { progressWrap.classList.add('hidden'); showToast('Erro ao carregar vídeo', 'error'); }
+  } catch (err) {
+    progressWrap.classList.add('hidden');
+    showToast('Erro ao carregar vídeo', 'error');
+  }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+  return (b/1024/1024/1024).toFixed(2) + ' GB';
+}
+
+function formatTime(s) {
+  if (!isFinite(s) || s < 0) return '...';
+  if (s < 60) return Math.ceil(s) + 's';
+  return Math.floor(s/60) + 'm ' + Math.ceil(s%60) + 's';
 }
 
 async function checkExistingVideo() {
@@ -533,7 +641,7 @@ async function loadClips() {
   try {
     const clips = await fetch('/clips').then(r => r.json());
     grid.innerHTML = '';
-    if (!clips.length) { grid.innerHTML = '<p class="empty-state">Nenhum clip exportado ainda.</p>'; return; }
+    if (!clips.length) { grid.innerHTML = '<p class="empty-state">Nenhum clip exportado ainda.<br>Vai ao Tagger e clica ✂ num evento.</p>'; return; }
     clips.forEach(c => {
       const card = document.createElement('div'); card.className = 'clip-card';
       const label = c.filename.replace('.mp4','').replace(/^clip_g_\d+_/,'').replace(/_/g,' ').replace(/\d+s \d+$/, '').trim();
