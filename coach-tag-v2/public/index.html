@@ -58,6 +58,29 @@
       </div>
       <div id="videoContainer" class="video-container hidden">
         <video id="video" controls><source id="videoSrc" src="" type="video/mp4"></video>
+        <!-- Drawing canvas — shown only when video is paused -->
+        <canvas id="drawCanvas" class="draw-canvas hidden"></canvas>
+        <!-- Drawing toolbar -->
+        <div id="drawToolbar" class="draw-toolbar hidden">
+          <div class="draw-tools">
+            <button class="draw-tool active" data-tool="arrow" title="Seta">➜</button>
+            <button class="draw-tool" data-tool="circle" title="Círculo">◯</button>
+            <button class="draw-tool" data-tool="rect" title="Rectângulo">▭</button>
+            <button class="draw-tool" data-tool="freehand" title="Desenho livre">✏</button>
+            <button class="draw-tool" data-tool="text" title="Texto">T</button>
+          </div>
+          <div class="draw-colors">
+            <button class="draw-color active" data-color="#ff3d3d" style="background:#ff3d3d" title="Vermelho"></button>
+            <button class="draw-color" data-color="#00e676" style="background:#00e676" title="Verde"></button>
+            <button class="draw-color" data-color="#ffeb3b" style="background:#ffeb3b" title="Amarelo"></button>
+            <button class="draw-color" data-color="#ffffff" style="background:#ffffff" title="Branco"></button>
+            <button class="draw-color" data-color="#2979ff" style="background:#2979ff" title="Azul"></button>
+          </div>
+          <div class="draw-actions">
+            <button class="draw-action" onclick="undoDrawing()" title="Desfazer">↩</button>
+            <button class="draw-action" onclick="clearDrawing()" title="Limpar tudo">🗑</button>
+          </div>
+        </div>
         <button class="change-video-btn" onclick="changeVideo()">↑ Trocar vídeo</button>
       </div>
       <div class="controls">
