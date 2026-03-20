@@ -290,3 +290,92 @@ kbd { background: var(--surface2); border: 1px solid var(--border2); border-radi
   .event-buttons { grid-template-columns: repeat(3,1fr); }
   .tab-btn { padding: 5px 8px; font-size: 0.75rem; }
 }
+
+/* ═══════════════════════════════════════════════
+   DRAWING CANVAS & TOOLBAR
+   ═══════════════════════════════════════════════ */
+
+.draw-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  cursor: crosshair;
+  z-index: 10;
+  touch-action: none;
+}
+.draw-canvas.hidden { display: none; }
+
+.draw-toolbar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 13, 18, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 7px 10px;
+  animation: toolbarIn 0.2s ease;
+}
+.draw-toolbar.hidden { display: none; }
+
+@keyframes toolbarIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.draw-tools, .draw-colors, .draw-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Dividers between groups */
+.draw-tools   { border-right: 1px solid rgba(255,255,255,0.1); padding-right: 8px; }
+.draw-colors  { border-right: 1px solid rgba(255,255,255,0.1); padding: 0 8px; }
+.draw-actions { padding-left: 4px; }
+
+.draw-tool {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  border-radius: 7px;
+  width: 32px; height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.draw-tool:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.draw-tool.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #000;
+}
+
+.draw-color {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.draw-color:hover  { transform: scale(1.15); }
+.draw-color.active { border-color: #fff; transform: scale(1.2); }
+
+.draw-action {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  border-radius: 7px;
+  width: 32px; height: 32px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.draw-action:hover { background: rgba(255,255,255,0.12); color: #fff; }
