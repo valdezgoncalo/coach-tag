@@ -30,7 +30,7 @@
     <!-- LEFT: Video + Controls -->
     <section class="video-panel">
 
-      <!-- Upload zone (shown when no video loaded) -->
+      <!-- Upload zone -->
       <div id="uploadZone" class="upload-zone">
         <div class="upload-inner">
           <div class="upload-icon">🎥</div>
@@ -40,40 +40,37 @@
           <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.mov,.avi,.mkv,.webm" hidden>
           <button class="btn-primary upload-btn" onclick="document.getElementById('videoFileInput').click()">Seleccionar ficheiro</button>
         </div>
-        <!-- progress bar, hidden initially -->
         <div id="uploadProgress" class="upload-progress hidden">
-          <div class="progress-label"><span id="uploadProgressText">A carregar...</span><span id="uploadPercent">0%</span></div>
+          <div class="progress-label">
+            <span id="uploadProgressText">A carregar...</span>
+            <span id="uploadPercent">0%</span>
+          </div>
           <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
         </div>
       </div>
 
-      <!-- Video player (hidden until video loaded) -->
+      <!-- Video player -->
       <div id="videoContainer" class="video-container hidden">
         <video id="video" controls>
           <source id="videoSrc" src="" type="video/mp4">
         </video>
-        <button class="change-video-btn" onclick="changeVideo()" title="Trocar vídeo">↑ Trocar vídeo</button>
+        <button class="change-video-btn" onclick="changeVideo()">↑ Trocar vídeo</button>
       </div>
 
       <!-- Controls -->
-      <div class="controls" id="controls">
+      <div class="controls">
         <div class="player-row">
           <label>Jogador</label>
           <select id="playerSelect"></select>
-          <button class="btn-icon" onclick="openAddPlayer()" title="Adicionar jogador">＋</button>
+          <button class="btn-icon" onclick="openModal('modalPlayer')" title="Adicionar jogador">＋</button>
         </div>
 
-        <div class="event-buttons">
-          <button class="tag-btn passe"   onclick="tagEvent('Passe')">⚡ Passe</button>
-          <button class="tag-btn perda"   onclick="tagEvent('Perda')">✗ Perda</button>
-          <button class="tag-btn fin"     onclick="tagEvent('Finalização')">🎯 Finalização</button>
-          <button class="tag-btn falta"   onclick="tagEvent('Falta')">🟨 Falta</button>
-          <button class="tag-btn golo"    onclick="tagEvent('Golo')">🥅 Golo</button>
-          <button class="tag-btn defesa"  onclick="tagEvent('Defesa')">🧤 Defesa</button>
-          <button class="tag-btn drible"  onclick="tagEvent('Drible')">💫 Drible</button>
-          <button class="tag-btn canto"   onclick="tagEvent('Canto')">📐 Canto</button>
-          <button class="tag-btn livreD"  onclick="tagEvent('Livre Direto')">🎯 Livre Direto</button>
-          <button class="tag-btn fora"    onclick="tagEvent('Fora de Jogo')">🚩 Fora de Jogo</button>
+        <!-- Action buttons — rendered dynamically by app.js -->
+        <div id="eventButtons" class="event-buttons"></div>
+
+        <!-- Manage actions button -->
+        <div class="actions-manage-row">
+          <button class="btn-manage-actions" onclick="openModal('modalAction')">＋ Nova acção</button>
         </div>
 
         <div class="shortcuts-hint">
@@ -89,7 +86,7 @@
       <div class="events-header">
         <h2>Eventos <span id="eventCount" class="badge">0</span></h2>
         <div class="events-header-actions">
-          <button class="btn-export-all" onclick="exportAllClips()" title="Exportar todos os eventos como clips">✂️ Exportar todos</button>
+          <button class="btn-export-all" onclick="exportAllClips()">✂️ Exportar todos</button>
           <button class="btn-danger-sm" onclick="clearAllEvents()">Limpar</button>
         </div>
       </div>
@@ -114,7 +111,7 @@
   </div>
 </div>
 
-<!-- Batch export progress overlay -->
+<!-- Batch export overlay -->
 <div id="batchOverlay" class="batch-overlay hidden">
   <div class="batch-box">
     <h3>A exportar clips...</h3>
@@ -124,14 +121,37 @@
   </div>
 </div>
 
-<!-- Add Player Modal -->
-<div id="modal" class="modal hidden">
+<!-- ══ MODAL: Adicionar Jogador ══ -->
+<div id="modalPlayer" class="modal hidden">
   <div class="modal-box">
     <h3>Adicionar Jogador</h3>
     <input id="newPlayerName" type="text" placeholder="Nome do jogador" maxlength="30">
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-secondary" onclick="closeModal('modalPlayer')">Cancelar</button>
       <button class="btn-primary" onclick="addPlayer()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Adicionar Acção ══ -->
+<div id="modalAction" class="modal hidden">
+  <div class="modal-box">
+    <h3>Nova Acção</h3>
+    <div class="modal-field">
+      <label>Emoji</label>
+      <input id="newActionEmoji" type="text" placeholder="🏷️" maxlength="2" style="width:64px;text-align:center;font-size:1.4rem;">
+    </div>
+    <div class="modal-field">
+      <label>Nome da acção</label>
+      <input id="newActionLabel" type="text" placeholder="Ex: Intercepção" maxlength="30">
+    </div>
+
+    <!-- List of custom actions to manage/delete -->
+    <div id="customActionsList" class="custom-actions-list"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modalAction')">Fechar</button>
+      <button class="btn-primary" onclick="addAction()">Adicionar</button>
     </div>
   </div>
 </div>
