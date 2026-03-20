@@ -518,3 +518,85 @@ kbd { background: var(--surface2); border: 1px solid var(--border2); border-radi
   white-space: nowrap;
 }
 .btn-pdf:hover { background: rgba(255, 80, 80, 0.2); }
+
+/* ═══════════════════════════════════════════════
+   UPLOAD TABS + LINK INPUT
+   ═══════════════════════════════════════════════ */
+
+.upload-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 4px;
+}
+
+.upload-tab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 5px 16px;
+  border-radius: 6px;
+  font-family: var(--ff-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.upload-tab.active {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.link-input-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 8px;
+}
+
+.link-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  font-family: var(--ff-body);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+.link-input:focus { border-color: var(--green); }
+
+.link-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+/* Upload speed label */
+.upload-speed {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+/* ─── Clips ephemeral warning ─────────────────── */
+.clips-ephemeral-warning {
+  background: rgba(255, 180, 0, 0.08);
+  border: 1px solid rgba(255, 180, 0, 0.2);
+  color: rgba(255, 200, 50, 0.85);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
